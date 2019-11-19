@@ -3,6 +3,12 @@ pragma solidity ^0.5.0;
 import "openzeppelin-solidity/contracts/access/Roles.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
+/*
+To use with Remix:
+import "github.com/OpenZeppelin/openzeppelin-solidity/contracts/access/Roles.sol";
+import "github.com/OpenZeppelin/zeppelin-solidity/contracts/ownership/Ownable.sol";
+*/
+
 contract ClassContract is Ownable {
     using Roles for Roles.Role; // We want to use the Roles library
     Roles.Role universityOwners; //Stores University owner Roles
@@ -22,9 +28,17 @@ contract ClassContract is Ownable {
         string website;
         string phoneNumber;
         bool open;
-        mapping (address => bool) owners;
-        mapping (address => bool) teachers;
-        mapping (address => bool) students;
+        uint memberIdGenerator;
+        mapping (address => UniversityMember) owners;
+        mapping (address => UniversityMember) teachers;
+        mapping (address => UniversityMember) students;
+    }
+
+    struct UniversityMember {
+        string fullName;
+        string email;
+        uint id;
+        bool active;
     }
 
     // Events
@@ -37,9 +51,17 @@ contract ClassContract is Ownable {
     }
 
     modifier ownerAtUniversity(uint universityId) {
-        require((universities[universityId].owners[msg.sender] == true), "DOES NOT BELONG TO THE UNIVERSITY OWNERS");
+        require((universities[universityId].owners[msg.sender].active == true), "DOES NOT BELONG TO THE UNIVERSITY OWNERS OR IS INACTIVE");
         require(universityOwners.has(msg.sender), "DOES NOT HAVE UNIVERSITY OWNER ROLE");
         _;
+    }
+
+    function readUniversity(uint _universityId) public view
+    returns(string memory name, string memory description)
+    {
+        name = universities[_universityId].name;
+        description = universities[_universityId].description;
+        return (name, description);
     }
 
 
@@ -63,35 +85,50 @@ contract ClassContract is Ownable {
     }
 
 
-    
-
     /*
     Roles and membership
     */
 
-    function addUniversityOwnerRoles(address _ownerAddr, uint universityId)
+    function addUniversityOwnerRoles(address _ownerAddr, string memory _fullName, string memory _email, uint universityId)
     public onlyOwner
     validAddress(_ownerAddr)
     {
         universityOwners.add(_ownerAddr);
-        universities[universityId].owners[_ownerAddr] = true;
+
+        UniversityMember memory newUniversityMember;
+        newUniversityMember.fullName = _fullName;
+        newUniversityMember.email = _email;
+        newUniversityMember.id = universities[universityId].memberIdGenerator;
+        universities[universityId].owners[_ownerAddr] = newUniversityMember;
+
+        universities[universityId].memberIdGenerator += 1;
     }
 
-    function addTeacherRoles(address _teacherAddr, uint universityId) public
-    validAddress(_teacherAddr)
-    ownerAtUniversity(universityId)
+    function addUniversityMember(address _addr, string memory _name, string memory _email, uint _universityId, string memory _memberRole) public
+    validAddress(_addr)
+    ownerAtUniversity(_universityId)
+    returns (bool)
     {
-        teachers.add(_teacherAddr);
-        universities[universityId].teachers[_teacherAddr] = true;
+        UniversityMember memory newUniversityMember;
+        newUniversityMember.fullName = _name;
+        newUniversityMember.email = _email;
+        newUniversityMember.id = universities[_universityId].memberIdGenerator;
+        universities[_universityId].memberIdGenerator += 1;
+
+        if (keccak256(abi.encodePacked(_memberRole)) == keccak256(abi.encodePacked("teacher")))
+        {
+            teachers.add(_addr);
+            universities[_universityId].teachers[_addr] = newUniversityMember;
+        }
+        else if (keccak256(abi.encodePacked(_memberRole)) == keccak256(abi.encodePacked("student")))
+        {
+            students.add(_addr);
+            universities[_universityId].students[_addr] = newUniversityMember;
+        }
+
+        return true;
     }
 
-    function addStudentRoles(address _studentAddr, uint universityId) public
-    validAddress(_studentAddr)
-    ownerAtUniversity(universityId)
-    {
-        students.add(_studentAddr);
-        universities[universityId].students[_studentAddr] = true;
-    }
 
     function addTeacherRoles(address[] memory _teachers) public onlyOwner {
         for(uint i = 0; i < _teachers.length; i++)
