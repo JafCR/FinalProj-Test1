@@ -49,4 +49,25 @@ contract ClassContract is Ownable {
         grades[student] = grade;
     }
 
+    modifier validAddress(address _address) {
+        require(_address != address(0), "ADDRESS CANNOT BE THE ZERO ADDRESS");
+        _;
+    }
+
+
+    function hasPaidFees(address account) validAddress(account) public view returns (bool) {
+        require(students.has(account),"Provided account is not a student");
+        return studentFees[account];
+    }
+
+
+    function terminateClass() onlyOwner public {
+        selfdestruct(msg.sender);
+    }
+
+
+    function getBalance(address account) public view returns (uint) {
+        return account.balance;
+    }
+
 }
