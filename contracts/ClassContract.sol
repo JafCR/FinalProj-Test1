@@ -1,4 +1,6 @@
 pragma solidity ^0.5.0;
+pragma experimental ABIEncoderV2;
+// added the experimental to try to return a struc in getAllUniversities
 
 import "openzeppelin-solidity/contracts/access/Roles.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -34,6 +36,14 @@ contract ClassContract is Ownable {
         mapping (address => UniversityMember) students;
     }
 
+    struct UniversityInfo {
+        string name;
+        string description;
+        string website;
+        string phoneNumber;
+        bool open;
+    }
+
     struct UniversityMember {
         string fullName;
         string email;
@@ -55,15 +65,6 @@ contract ClassContract is Ownable {
         require(universityOwners.has(msg.sender), "DOES NOT HAVE UNIVERSITY OWNER ROLE");
         _;
     }
-
-    function readUniversity(uint _universityId) public view
-    returns(string memory name, string memory description)
-    {
-        name = universities[_universityId].name;
-        description = universities[_universityId].description;
-        return (name, description);
-    }
-
 
 
     // Add Universities
@@ -127,6 +128,22 @@ contract ClassContract is Ownable {
         }
 
         return true;
+    }
+
+
+    function getAllUniversities()
+    public view
+    returns (UniversityInfo[] memory)
+    {
+        UniversityInfo[] memory results = new UniversityInfo[](universityIdGenerator);
+       for (uint i = 0; i < universityIdGenerator; i++) {
+           results[i].name = universities[universityIdGenerator].name;
+           results[i].description = universities[universityIdGenerator].description;
+           results[i].website = universities[universityIdGenerator].website;
+           results[i].phoneNumber = universities[universityIdGenerator].phoneNumber;
+           results[i].open = universities[universityIdGenerator].open;
+       }
+       return results;
     }
 
 
